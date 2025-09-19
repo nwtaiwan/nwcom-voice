@@ -53,7 +53,7 @@
                 <input type="password" id="password-input" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="••••••••">
                 <p id="login-error" class="text-red-500 text-sm h-4 opacity-0">密碼錯誤！</p>
             </div>
-            <button id="login-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-colors">
+            <button id="login-btn" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg transition-colors">
                 登入
             </button>
         </div>
@@ -196,12 +196,38 @@
                 if (historyItem) {
                     audioPlayer.src = historyItem.url;
                     audioPlayer.play();
+                    showPlayer(true);
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                 }
             }
         });
-
+        
         // --- 核心功能 ---
+        async function fetchWithBackoff(url, payload, maxRetries = 5) {
+            let delay = 1000; // start with 1 second
+            for (let i = 0; i < maxRetries; i++) {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    return response;
+                }
+
+                if (response.status === 429) {
+                    console.log(`請求過於頻繁。 ${delay / 1000} 秒後重試...`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    delay *= 2; // 指數退避
+                } else {
+                    // 對於其他錯誤，立即拋出
+                    throw new Error(`API 請求失敗，狀態碼：${response.status}。請檢查金鑰。`);
+                }
+            }
+            throw new Error(`API 請求失敗，已達重試上限。`);
+        }
+
         async function generateSpeech() {
             if (!API_KEY) {
                 showError('API 金鑰未設定，請在程式碼中填入金鑰。');
@@ -243,13 +269,7 @@
                     delete payload.generationConfig.speechConfig;
                 }
                 
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-
-                if (!response.ok) throw new Error(`API 請求失敗，狀態碼：${response.status}。請檢查金鑰。`);
+                const response = await fetchWithBackoff(apiUrl, payload);
                 
                 const result = await response.json();
                 const part = result?.candidates?.[0]?.content?.parts?.[0];
