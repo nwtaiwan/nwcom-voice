@@ -26,6 +26,20 @@
         #login-error {
             transition: opacity 0.3s ease;
         }
+        /* For custom scrollbar in history */
+        #history-list::-webkit-scrollbar {
+            width: 8px;
+        }
+        #history-list::-webkit-scrollbar-track {
+            background: #2d3748; /* bg-gray-800 */
+        }
+        #history-list::-webkit-scrollbar-thumb {
+            background: #4a5568; /* bg-gray-600 */
+            border-radius: 4px;
+        }
+        #history-list::-webkit-scrollbar-thumb:hover {
+            background: #718096; /* bg-gray-500 */
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-white">
@@ -50,7 +64,7 @@
         <div class="w-full max-w-2xl bg-gray-800 rounded-2xl shadow-2xl p-6 md:p-8 space-y-6">
             <div class="text-center">
                 <img src="https://static.wixstatic.com/media/6148f9_56377cef73c1498f95a2c3057b89f2ed~mv2.png" alt="西北圖片" class="mx-auto mb-4 h-24">
-                <h1 class="text-3xl md:text-4xl font-bold text-red-500">西北中文文字轉語音小工具</h1>
+                <h1 class="text-3xl md:text-3xl font-bold text-red-500">西北中文文字轉語音小工具</h1>
                 <p class="text-gray-400 mt-2">西北好用心  生活更安心</p>
             </div>
 
@@ -61,11 +75,9 @@
 
             <div class="space-y-3">
                 <label class="text-sm font-medium text-gray-300">選擇聲音</label>
-                <div id="voice-selector" class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div id="voice-selector" class="grid grid-cols-2 gap-3">
                     <button data-voice="male" class="voice-btn bg-blue-600 ring-2 ring-blue-400 p-3 rounded-lg font-semibold transition-transform transform hover:scale-105">男聲</button>
-                    <button data-voice="female" class="voice-btn bg-gray-700 hover:bg-gray-600 p-3 rounded-lg font-semibold transition-transform transform hover:scale-105">女聲</button>
-                    <button data-voice="male_child" class="voice-btn bg-gray-700 hover:bg-gray-600 p-3 rounded-lg font-semibold transition-transform transform hover:scale-105">男童聲</button>
-                    <button data-voice="female_child" class="voice-btn bg-gray-700 hover:bg-gray-600 p-3 rounded-lg font-semibold transition-transform transform hover:scale-105">女童聲</button>
+                    <button data-voice="female_child" class="voice-btn bg-gray-700 hover:bg-gray-600 p-3 rounded-lg font-semibold transition-transform transform hover:scale-105">女聲</button>
                 </div>
             </div>
 
@@ -75,10 +87,24 @@
 
             <div id="output-area" class="min-h-[6rem] flex flex-col items-center justify-center space-y-4">
                 <div id="loader" class="loader hidden"></div>
-                <audio id="audio-player" controls class="w-full hidden"></audio>
-                <a id="download-btn" href="#" download="speech.mp3" class="hidden w-full text-center bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-lg transition-colors">下載 MP3</a>
+                <audio id="audio-player"></audio>
+                <div id="player-ui" class="w-full flex items-center justify-center gap-4 hidden">
+                    <button id="play-pause-btn" class="p-4 bg-green-500 hover:bg-green-600 rounded-full text-white transition-colors">
+                        <svg id="play-icon" xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-play-fill" viewBox="0 0 16 16"><path d="m11.596 8.697-6.363 3.692c-.54.313-1.233-.066-1.233-.697V4.308c0-.63.692-1.01 1.233-.696l6.363 3.692a.802.802 0 0 1 0 1.393z"/></svg>
+                        <svg id="pause-icon" xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-pause-fill hidden" viewBox="0 0 16 16"><path d="M5.5 3.5A1.5 1.5 0 0 1 7 5v6a1.5 1.5 0 0 1-3 0V5a1.5 1.5 0 0 1 1.5-1.5zm5 0A1.5 1.5 0 0 1 12 5v6a1.5 1.5 0 0 1-3 0V5a1.5 1.5 0 0 1 1.5-1.5z"/></svg>
+                    </button>
+                    <a id="download-btn" href="#" download="speech.mp3" class="flex-grow text-center bg-purple-600 hover:bg-purple-700 text-white font-bold py-4 px-4 rounded-lg transition-colors">下載 MP3</a>
+                </div>
                 <div id="error-message" class="text-red-400 text-center hidden"></div>
             </div>
+            
+            <div id="history-section" class="mt-8 pt-6 border-t border-gray-700 space-y-4">
+                <h2 class="text-xl font-bold">歷史紀錄</h2>
+                <div id="history-list" class="space-y-3 max-h-60 overflow-y-auto pr-2">
+                    <p id="no-history-msg" class="text-gray-500">目前沒有任何紀錄。</p>
+                </div>
+            </div>
+
         </div>
     </div>
 
@@ -97,11 +123,7 @@
         const loginError = document.getElementById('login-error');
 
         loginBtn.addEventListener('click', handleLogin);
-        passwordInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                handleLogin();
-            }
-        });
+        passwordInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleLogin(); });
 
         function handleLogin() {
             if (passwordInput.value === '8889') {
@@ -109,9 +131,7 @@
                 mainApp.classList.remove('hidden');
             } else {
                 loginError.style.opacity = '1';
-                setTimeout(() => {
-                    loginError.style.opacity = '0';
-                }, 2000);
+                setTimeout(() => { loginError.style.opacity = '0'; }, 2000);
             }
         }
 
@@ -124,10 +144,17 @@
         const downloadBtn = document.getElementById('download-btn');
         const errorMessage = document.getElementById('error-message');
         const voiceButtons = document.querySelectorAll('.voice-btn');
+        const historyList = document.getElementById('history-list');
+        const noHistoryMsg = document.getElementById('no-history-msg');
+        const playerUI = document.getElementById('player-ui');
+        const playPauseBtn = document.getElementById('play-pause-btn');
+        const playIcon = document.getElementById('play-icon');
+        const pauseIcon = document.getElementById('pause-icon');
 
         let selectedVoice = 'male';
-        let currentObjectUrl = null;
+        let speechHistory = [];
 
+        // --- 事件監聽 ---
         voiceSelector.addEventListener('click', (e) => {
             if (e.target.classList.contains('voice-btn')) {
                 selectedVoice = e.target.dataset.voice;
@@ -142,6 +169,39 @@
 
         generateBtn.addEventListener('click', generateSpeech);
 
+        playPauseBtn.addEventListener('click', () => {
+            if (audioPlayer.paused) audioPlayer.play();
+            else audioPlayer.pause();
+        });
+
+        audioPlayer.addEventListener('play', () => {
+            playIcon.classList.add('hidden');
+            pauseIcon.classList.remove('hidden');
+        });
+
+        audioPlayer.addEventListener('pause', () => {
+            playIcon.classList.remove('hidden');
+            pauseIcon.classList.add('hidden');
+        });
+        audioPlayer.addEventListener('ended', () => {
+            playIcon.classList.remove('hidden');
+            pauseIcon.classList.add('hidden');
+        });
+
+        historyList.addEventListener('click', (e) => {
+            const playBtn = e.target.closest('.history-play-btn');
+            if (playBtn) {
+                const id = parseInt(playBtn.dataset.id, 10);
+                const historyItem = speechHistory.find(item => item.id === id);
+                if (historyItem) {
+                    audioPlayer.src = historyItem.url;
+                    audioPlayer.play();
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+            }
+        });
+
+        // --- 核心功能 ---
         async function generateSpeech() {
             if (!API_KEY) {
                 showError('API 金鑰未設定，請在程式碼中填入金鑰。');
@@ -154,22 +214,34 @@
             }
 
             showLoading(true);
+            
+            let prompt = "";
+            let speechConfig = {};
 
-            const prompts = {
-                male: `請用沉穩的成年男聲說：${text}`,
-                female: `請用溫柔的成年女聲說：${text}`,
-                male_child: `請用活潑的男童聲說：${text}`,
-                female_child: `請用可愛的女童聲說：${text}`
-            };
-            const prompt = prompts[selectedVoice];
+            switch (selectedVoice) {
+                case 'male':
+                    prompt = `請說：${text}`;
+                    speechConfig = { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Algenib" } } };
+                    break;
+                case 'female_child':
+                    prompt = `請用一個八歲小女孩的聲音說：${text}`;
+                    break;
+            }
 
             try {
                 const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${API_KEY}`;
                 const payload = {
                     contents: [{ parts: [{ text: prompt }] }],
-                    generationConfig: { responseModalities: ["AUDIO"] },
+                    generationConfig: { 
+                        responseModalities: ["AUDIO"],
+                        speechConfig: speechConfig
+                    },
                     model: "gemini-2.5-flash-preview-tts"
                 };
+
+                if (Object.keys(speechConfig).length === 0) {
+                    delete payload.generationConfig.speechConfig;
+                }
                 
                 const response = await fetch(apiUrl, {
                     method: 'POST',
@@ -177,7 +249,7 @@
                     body: JSON.stringify(payload)
                 });
 
-                if (!response.ok) throw new Error(`API 請求失敗，狀態碼：${response.status}。請檢查您的 API 金鑰。`);
+                if (!response.ok) throw new Error(`API 請求失敗，狀態碼：${response.status}。請檢查金鑰。`);
                 
                 const result = await response.json();
                 const part = result?.candidates?.[0]?.content?.parts?.[0];
@@ -185,22 +257,19 @@
                 const mimeType = part?.inlineData?.mimeType;
 
                 if (audioData && mimeType?.startsWith("audio/")) {
-                    const sampleRateMatch = mimeType.match(/rate=(\d+)/);
-                    const sampleRate = sampleRateMatch ? parseInt(sampleRateMatch[1], 10) : 24000;
-                    
+                    const sampleRate = mimeType.match(/rate=(\d+)/) ? parseInt(mimeType.match(/rate=(\d+)/)[1], 10) : 24000;
                     const pcmData = base64ToArrayBuffer(audioData);
                     const pcm16 = new Int16Array(pcmData);
-
-                    // 轉換為 MP3
                     const mp3Blob = pcmToMp3(pcm16, sampleRate);
-                    
-                    if (currentObjectUrl) {
-                        URL.revokeObjectURL(currentObjectUrl);
-                    }
-                    currentObjectUrl = URL.createObjectURL(mp3Blob);
+                    const objectUrl = URL.createObjectURL(mp3Blob);
 
-                    audioPlayer.src = currentObjectUrl;
-                    downloadBtn.href = currentObjectUrl;
+                    const historyItem = { id: Date.now(), text: text, blob: mp3Blob, url: objectUrl };
+                    speechHistory.unshift(historyItem);
+                    renderHistory();
+
+                    audioPlayer.src = objectUrl;
+                    downloadBtn.href = objectUrl;
+                    downloadBtn.download = `speech_${historyItem.id}.mp3`;
                     showPlayer(true);
                 } else {
                     throw new Error('API 回應中未找到有效的音訊資料。');
@@ -213,6 +282,28 @@
                 showLoading(false);
             }
         }
+
+        function renderHistory() {
+            if (speechHistory.length === 0) {
+                noHistoryMsg.classList.remove('hidden');
+                historyList.innerHTML = '';
+            } else {
+                noHistoryMsg.classList.add('hidden');
+                historyList.innerHTML = speechHistory.map(item => `
+                    <div class="bg-gray-700 p-3 rounded-lg flex items-center justify-between gap-3 animate-fade-in">
+                        <p class="text-gray-300 text-sm flex-grow truncate" title="${item.text.replace(/"/g, '&quot;')}">${item.text}</p>
+                        <div class="flex-shrink-0 flex items-center gap-2">
+                            <button data-id="${item.id}" class="history-play-btn p-2 bg-blue-500 hover:bg-blue-600 rounded-full text-white transition-colors" title="播放">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-play-fill pointer-events-none" viewBox="0 0 16 16"><path d="m11.596 8.697-6.363 3.692c-.54.313-1.233-.066-1.233-.697V4.308c0-.63.692-1.01 1.233-.696l6.363 3.692a.802.802 0 0 1 0 1.393z"/></svg>
+                            </button>
+                            <a href="${item.url}" download="speech_${item.id}.mp3" class="history-download-btn p-2 bg-purple-500 hover:bg-purple-600 rounded-full text-white transition-colors" title="下載">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-download pointer-events-none" viewBox="0 0 16 16"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>
+                            </a>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
         
         // --- UI 狀態管理函數 ---
         function showLoading(isLoading) {
@@ -220,23 +311,20 @@
             generateBtn.textContent = isLoading ? '生成中...' : '生成語音';
             loader.classList.toggle('hidden', !isLoading);
             if (isLoading) {
-                audioPlayer.classList.add('hidden');
-                downloadBtn.classList.add('hidden');
+                playerUI.classList.add('hidden');
                 errorMessage.classList.add('hidden');
             }
         }
 
         function showPlayer(shouldShow) {
-            audioPlayer.classList.toggle('hidden', !shouldShow);
-            downloadBtn.classList.toggle('hidden', !shouldShow);
+            playerUI.classList.toggle('hidden', !shouldShow);
             errorMessage.classList.add('hidden');
         }
 
         function showError(message) {
             errorMessage.textContent = message;
             errorMessage.classList.remove('hidden');
-            audioPlayer.classList.add('hidden');
-            downloadBtn.classList.add('hidden');
+            playerUI.classList.add('hidden');
         }
         
         // --- 音訊處理輔助函數 ---
@@ -249,22 +337,15 @@
         }
 
         function pcmToMp3(samples, sampleRate) {
-            const mp3encoder = new lamejs.Mp3Encoder(1, sampleRate, 128); // 1 channel, 128 kbps
+            const mp3encoder = new lamejs.Mp3Encoder(1, sampleRate, 128);
             const mp3Data = [];
             const sampleBlockSize = 1152; 
-
             for (let i = 0; i < samples.length; i += sampleBlockSize) {
-                const sampleChunk = samples.subarray(i, i + sampleBlockSize);
-                const mp3buf = mp3encoder.encodeBuffer(sampleChunk);
-                if (mp3buf.length > 0) {
-                    mp3Data.push(mp3buf);
-                }
+                const mp3buf = mp3encoder.encodeBuffer(samples.subarray(i, i + sampleBlockSize));
+                if (mp3buf.length > 0) mp3Data.push(mp3buf);
             }
             const mp3buf = mp3encoder.flush();
-            if (mp3buf.length > 0) {
-                mp3Data.push(mp3buf);
-            }
-
+            if (mp3buf.length > 0) mp3Data.push(mp3buf);
             return new Blob(mp3Data.map(d => new Uint8Array(d)), { type: 'audio/mp3' });
         }
     </script>
