@@ -5,12 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>中文文字轉語音系統</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Inter', 'Noto Sans TC', sans-serif;
         }
-        /* 簡單的旋轉動畫 */
         .loader {
             border: 4px solid #f3f3f3;
             border-top: 4px solid #3498db;
@@ -23,110 +23,151 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        #login-error {
+            transition: opacity 0.3s ease;
+        }
     </style>
 </head>
-<body class="bg-gray-900 text-white flex items-center justify-center min-h-screen p-4">
+<body class="bg-gray-900 text-white">
 
-    <div class="w-full max-w-2xl bg-gray-800 rounded-2xl shadow-2xl p-6 md:p-8 space-y-6">
-        <div class="text-center">
-            <img src="https://static.wixstatic.com/media/6148f9_56377cef73c1498f95a2c3057b89f2ed~mv2.png" alt="西北圖片" class="mx-auto mb-4 h-24">
-            <h1 class="text-3xl md:text-4xl font-bold text-red-500">西北中文文字轉語音系統</h1>
-            <p class="text-gray-400 mt-2">西北好用心  生活更安心</p>
-        </div>
-
-        <!-- 文字輸入區 -->
-        <div class="space-y-2">
-            <label for="text-input" class="text-sm font-medium text-gray-300">輸入文字</label>
-            <textarea id="text-input" rows="5" class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200" placeholder="請在此輸入您想轉換的中文文字..."></textarea>
-        </div>
-
-        <!-- 聲音選擇 -->
-        <div class="space-y-3">
-            <label class="text-sm font-medium text-gray-300">選擇聲音</label>
-            <div id="voice-selector" class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <button data-voice="male" class="voice-btn bg-blue-600 ring-2 ring-blue-400 p-3 rounded-lg font-semibold transition-transform transform hover:scale-105">男聲</button>
-                <button data-voice="female" class="voice-btn bg-gray-700 hover:bg-gray-600 p-3 rounded-lg font-semibold transition-transform transform hover:scale-105">女聲</button>
-                <button data-voice="male_child" class="voice-btn bg-gray-700 hover:bg-gray-600 p-3 rounded-lg font-semibold transition-transform transform hover:scale-105">男童聲</button>
-                <button data-voice="female_child" class="voice-btn bg-gray-700 hover:bg-gray-600 p-3 rounded-lg font-semibold transition-transform transform hover:scale-105">女童聲</button>
+    <!-- 登入頁面 -->
+    <div id="login-page" class="fixed inset-0 bg-red-600 flex items-center justify-center p-4 z-50">
+        <div class="w-full max-w-sm bg-white rounded-2xl shadow-2xl p-8 space-y-6 text-gray-800">
+            <h1 class="text-2xl md:text-2xl font-bold text-center text-gray-900 whitespace-nowrap">西北中文文字轉語音小工具</h1>
+            <div class="space-y-2">
+                <label for="password-input" class="text-sm font-medium">請輸入密碼</label>
+                <input type="password" id="password-input" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="••••••••">
+                <p id="login-error" class="text-red-500 text-sm h-4 opacity-0">密碼錯誤！</p>
             </div>
+            <button id="login-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-colors">
+                登入
+            </button>
         </div>
+    </div>
 
-        <!-- 產生按鈕 -->
-        <button id="generate-btn" class="w-full bg-gradient-to-r from-green-500 to-cyan-500 hover:from-green-600 hover:to-cyan-600 text-white font-bold py-3 px-4 rounded-lg transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105">
-            生成語音
-        </button>
+    <!-- 主要應用程式介面 (預設隱藏) -->
+    <div id="main-app" class="hidden min-h-screen flex items-center justify-center p-4">
+        <div class="w-full max-w-2xl bg-gray-800 rounded-2xl shadow-2xl p-6 md:p-8 space-y-6">
+            <div class="text-center">
+                <img src="https://static.wixstatic.com/media/6148f9_56377cef73c1498f95a2c3057b89f2ed~mv2.png" alt="西北圖片" class="mx-auto mb-4 h-24">
+                <h1 class="text-3xl md:text-4xl font-bold text-red-500">西北中文文字轉語音小工具</h1>
+                <p class="text-gray-400 mt-2">西北好用心  生活更安心</p>
+            </div>
 
-        <!-- 載入中與播放器 -->
-        <div id="output-area" class="h-24 flex items-center justify-center">
-            <div id="loader" class="loader hidden"></div>
-            <audio id="audio-player" controls class="w-full hidden"></audio>
-            <div id="error-message" class="text-red-400 text-center hidden"></div>
+            <div class="space-y-2">
+                <label for="text-input" class="text-sm font-medium text-gray-300">輸入文字</label>
+                <textarea id="text-input" rows="5" class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 transition duration-200" placeholder="請在此輸入您想轉換的中文文字..."></textarea>
+            </div>
+
+            <div class="space-y-3">
+                <label class="text-sm font-medium text-gray-300">選擇聲音</label>
+                <div id="voice-selector" class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <button data-voice="male" class="voice-btn bg-blue-600 ring-2 ring-blue-400 p-3 rounded-lg font-semibold transition-transform transform hover:scale-105">男聲</button>
+                    <button data-voice="female" class="voice-btn bg-gray-700 hover:bg-gray-600 p-3 rounded-lg font-semibold transition-transform transform hover:scale-105">女聲</button>
+                    <button data-voice="male_child" class="voice-btn bg-gray-700 hover:bg-gray-600 p-3 rounded-lg font-semibold transition-transform transform hover:scale-105">男童聲</button>
+                    <button data-voice="female_child" class="voice-btn bg-gray-700 hover:bg-gray-600 p-3 rounded-lg font-semibold transition-transform transform hover:scale-105">女童聲</button>
+                </div>
+            </div>
+
+            <button id="generate-btn" class="w-full bg-gradient-to-r from-green-500 to-cyan-500 hover:from-green-600 hover:to-cyan-600 text-white font-bold py-3 px-4 rounded-lg transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105">
+                生成語音
+            </button>
+
+            <div id="output-area" class="min-h-[6rem] flex flex-col items-center justify-center space-y-4">
+                <div id="loader" class="loader hidden"></div>
+                <audio id="audio-player" controls class="w-full hidden"></audio>
+                <a id="download-btn" href="#" download="speech.mp3" class="hidden w-full text-center bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-lg transition-colors">下載 MP3</a>
+                <div id="error-message" class="text-red-400 text-center hidden"></div>
+            </div>
         </div>
     </div>
 
     <script>
-        // DOM 元素
+        // ===============================================================
+        // == 請在這裡填入您的 Google Gemini API 金鑰 ==
+        // ===============================================================
+        const API_KEY = "AIzaSyCQZOnA26Vm2JVU-ZUpWESEa1dGaun4ajM"; // <--- 將您的金鑰貼在引號之間
+        // ===============================================================
+
+        // --- 登入邏輯 ---
+        const loginPage = document.getElementById('login-page');
+        const mainApp = document.getElementById('main-app');
+        const passwordInput = document.getElementById('password-input');
+        const loginBtn = document.getElementById('login-btn');
+        const loginError = document.getElementById('login-error');
+
+        loginBtn.addEventListener('click', handleLogin);
+        passwordInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                handleLogin();
+            }
+        });
+
+        function handleLogin() {
+            if (passwordInput.value === '8889') {
+                loginPage.style.display = 'none';
+                mainApp.classList.remove('hidden');
+            } else {
+                loginError.style.opacity = '1';
+                setTimeout(() => {
+                    loginError.style.opacity = '0';
+                }, 2000);
+            }
+        }
+
+        // --- 主要應用程式邏輯 ---
         const textInput = document.getElementById('text-input');
         const voiceSelector = document.getElementById('voice-selector');
         const generateBtn = document.getElementById('generate-btn');
         const loader = document.getElementById('loader');
         const audioPlayer = document.getElementById('audio-player');
+        const downloadBtn = document.getElementById('download-btn');
         const errorMessage = document.getElementById('error-message');
         const voiceButtons = document.querySelectorAll('.voice-btn');
 
-        let selectedVoice = 'male'; // 預設聲音
+        let selectedVoice = 'male';
+        let currentObjectUrl = null;
 
-        // 處理聲音選擇
         voiceSelector.addEventListener('click', (e) => {
             if (e.target.classList.contains('voice-btn')) {
                 selectedVoice = e.target.dataset.voice;
-                
-                // 更新按鈕樣式
                 voiceButtons.forEach(btn => {
                     btn.classList.remove('bg-blue-600', 'ring-2', 'ring-blue-400');
                     btn.classList.add('bg-gray-700', 'hover:bg-gray-600');
                 });
-                
                 e.target.classList.add('bg-blue-600', 'ring-2', 'ring-blue-400');
                 e.target.classList.remove('bg-gray-700', 'hover:bg-gray-600');
             }
         });
 
-        // 產生按鈕點擊事件
         generateBtn.addEventListener('click', generateSpeech);
 
         async function generateSpeech() {
+            if (!API_KEY) {
+                showError('API 金鑰未設定，請在程式碼中填入金鑰。');
+                return;
+            }
             const text = textInput.value.trim();
             if (!text) {
                 showError('請輸入文字！');
                 return;
             }
 
-            // 更新 UI 狀態
             showLoading(true);
-            
-            // 根據選擇的聲音建構提示
+
             const prompts = {
                 male: `請用沉穩的成年男聲說：${text}`,
                 female: `請用溫柔的成年女聲說：${text}`,
                 male_child: `請用活潑的男童聲說：${text}`,
                 female_child: `請用可愛的女童聲說：${text}`
             };
-
             const prompt = prompts[selectedVoice];
 
             try {
-                // Gemini API 請求
-                const apiKey = ""; // Canvas 將在執行時自動提供 API 金鑰
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
-
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${API_KEY}`;
                 const payload = {
-                    contents: [{
-                        parts: [{ text: prompt }]
-                    }],
-                    generationConfig: {
-                        responseModalities: ["AUDIO"],
-                    },
+                    contents: [{ parts: [{ text: prompt }] }],
+                    generationConfig: { responseModalities: ["AUDIO"] },
                     model: "gemini-2.5-flash-preview-tts"
                 };
                 
@@ -136,26 +177,30 @@
                     body: JSON.stringify(payload)
                 });
 
-                if (!response.ok) {
-                    throw new Error(`API 請求失敗，狀態碼：${response.status}`);
-                }
+                if (!response.ok) throw new Error(`API 請求失敗，狀態碼：${response.status}。請檢查您的 API 金鑰。`);
                 
                 const result = await response.json();
                 const part = result?.candidates?.[0]?.content?.parts?.[0];
                 const audioData = part?.inlineData?.data;
                 const mimeType = part?.inlineData?.mimeType;
 
-                if (audioData && mimeType && mimeType.startsWith("audio/")) {
-                    // API 返回的是 audio/L16;rate=24000
+                if (audioData && mimeType?.startsWith("audio/")) {
                     const sampleRateMatch = mimeType.match(/rate=(\d+)/);
                     const sampleRate = sampleRateMatch ? parseInt(sampleRateMatch[1], 10) : 24000;
                     
                     const pcmData = base64ToArrayBuffer(audioData);
                     const pcm16 = new Int16Array(pcmData);
-                    const wavBlob = pcmToWav(pcm16, 1, sampleRate); // 1 channel
-                    const audioUrl = URL.createObjectURL(wavBlob);
 
-                    audioPlayer.src = audioUrl;
+                    // 轉換為 MP3
+                    const mp3Blob = pcmToMp3(pcm16, sampleRate);
+                    
+                    if (currentObjectUrl) {
+                        URL.revokeObjectURL(currentObjectUrl);
+                    }
+                    currentObjectUrl = URL.createObjectURL(mp3Blob);
+
+                    audioPlayer.src = currentObjectUrl;
+                    downloadBtn.href = currentObjectUrl;
                     showPlayer(true);
                 } else {
                     throw new Error('API 回應中未找到有效的音訊資料。');
@@ -163,95 +208,64 @@
 
             } catch (error) {
                 console.error('語音生成失敗:', error);
-                showError('語音生成失敗，請稍後再試。');
+                showError(error.message || '語音生成失敗，請稍後再試。');
             } finally {
                 showLoading(false);
             }
         }
-
+        
         // --- UI 狀態管理函數 ---
         function showLoading(isLoading) {
+            generateBtn.disabled = isLoading;
+            generateBtn.textContent = isLoading ? '生成中...' : '生成語音';
+            loader.classList.toggle('hidden', !isLoading);
             if (isLoading) {
-                generateBtn.disabled = true;
-                generateBtn.textContent = '生成中...';
-                loader.classList.remove('hidden');
                 audioPlayer.classList.add('hidden');
+                downloadBtn.classList.add('hidden');
                 errorMessage.classList.add('hidden');
-            } else {
-                generateBtn.disabled = false;
-                generateBtn.textContent = '生成語音';
-                loader.classList.add('hidden');
             }
         }
 
         function showPlayer(shouldShow) {
-             audioPlayer.classList.toggle('hidden', !shouldShow);
-             errorMessage.classList.add('hidden');
+            audioPlayer.classList.toggle('hidden', !shouldShow);
+            downloadBtn.classList.toggle('hidden', !shouldShow);
+            errorMessage.classList.add('hidden');
         }
 
         function showError(message) {
             errorMessage.textContent = message;
             errorMessage.classList.remove('hidden');
             audioPlayer.classList.add('hidden');
+            downloadBtn.classList.add('hidden');
         }
-
+        
         // --- 音訊處理輔助函數 ---
-
-        /**
-         * 將 Base64 字串解碼為 ArrayBuffer
-         * @param {string} base64 - Base64 編碼的音訊資料
-         * @returns {ArrayBuffer}
-         */
         function base64ToArrayBuffer(base64) {
             const binaryString = window.atob(base64);
             const len = binaryString.length;
             const bytes = new Uint8Array(len);
-            for (let i = 0; i < len; i++) {
-                bytes[i] = binaryString.charCodeAt(i);
-            }
+            for (let i = 0; i < len; i++) bytes[i] = binaryString.charCodeAt(i);
             return bytes.buffer;
         }
 
-        /**
-         * 將 PCM 資料轉換為 WAV Blob
-         * @param {Int16Array} samples - 16-bit PCM 音訊樣本
-         * @param {number} numChannels - 聲道數
-         * @param {number} sampleRate - 取樣率
-         * @returns {Blob}
-         */
-        function pcmToWav(samples, numChannels, sampleRate) {
-            const buffer = new ArrayBuffer(44 + samples.length * 2);
-            const view = new DataView(buffer);
+        function pcmToMp3(samples, sampleRate) {
+            const mp3encoder = new lamejs.Mp3Encoder(1, sampleRate, 128); // 1 channel, 128 kbps
+            const mp3Data = [];
+            const sampleBlockSize = 1152; 
 
-            /* RIFF 標頭 */
-            writeString(view, 0, 'RIFF');
-            view.setUint32(4, 36 + samples.length * 2, true);
-            writeString(view, 8, 'WAVE');
-            /* 'fmt ' 子區塊 */
-            writeString(view, 12, 'fmt ');
-            view.setUint32(16, 16, true);
-            view.setUint16(20, 1, true); // 音訊格式 (1 = PCM)
-            view.setUint16(22, numChannels, true);
-            view.setUint32(24, sampleRate, true);
-            view.setUint32(28, sampleRate * numChannels * 2, true); // Byte rate
-            view.setUint16(32, numChannels * 2, true); // Block align
-            view.setUint16(34, 16, true); // Bits per sample
-            /* 'data' 子區塊 */
-            writeString(view, 36, 'data');
-            view.setUint32(40, samples.length * 2, true);
-
-            /* 寫入 PCM 資料 */
-            for (let i = 0; i < samples.length; i++) {
-                view.setInt16(44 + i * 2, samples[i], true);
+            for (let i = 0; i < samples.length; i += sampleBlockSize) {
+                const sampleChunk = samples.subarray(i, i + sampleBlockSize);
+                const mp3buf = mp3encoder.encodeBuffer(sampleChunk);
+                if (mp3buf.length > 0) {
+                    mp3Data.push(mp3buf);
+                }
+            }
+            const mp3buf = mp3encoder.flush();
+            if (mp3buf.length > 0) {
+                mp3Data.push(mp3buf);
             }
 
-            return new Blob([view], { type: 'audio/wav' });
-        }
-
-        function writeString(view, offset, string) {
-            for (let i = 0; i < string.length; i++) {
-                view.setUint8(offset + i, string.charCodeAt(i));
-            }
+            return new Blob(mp3Data.map(d => new Uint8Array(d)), { type: 'audio/mp3' });
         }
     </script>
 </body>
