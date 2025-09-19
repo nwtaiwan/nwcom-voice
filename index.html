@@ -112,7 +112,7 @@
         // ===============================================================
         // == 請在這裡填入您的 Google Gemini API 金鑰 ==
         // ===============================================================
-        const API_KEY = "AIzaSyCQZOnA26Vm2JVU-ZUpWESEa1dGaun4ajM"; // <--- 將您的金鑰貼在引號之間
+        const API_KEY = "AIzaSyAAlRJHaD6l7DXBXeGsCiOjgABZ-h_QuK0"; // <--- 將您的金鑰貼在引號之間
         // ===============================================================
 
         // --- 登入邏輯 ---
@@ -206,31 +206,52 @@
         async function fetchWithBackoff(url, payload, maxRetries = 5) {
             let delay = 1000; // start with 1 second
             for (let i = 0; i < maxRetries; i++) {
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
 
-                if (response.ok) {
-                    return response;
-                }
+                    if (response.ok) {
+                        return response;
+                    }
 
-                if (response.status === 429) {
-                    console.log(`請求過於頻繁。 ${delay / 1000} 秒後重試...`);
-                    await new Promise(resolve => setTimeout(resolve, delay));
-                    delay *= 2; // 指數退避
-                } else {
-                    // 對於其他錯誤，立即拋出
-                    throw new Error(`API 請求失敗，狀態碼：${response.status}。請檢查金鑰。`);
+                    if (response.status === 429) {
+                        console.log(`請求過於頻繁 (429)。 ${delay / 1000} 秒後重試... (${i + 1}/${maxRetries})`);
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        delay *= 2; // 指數退避
+                    } else {
+                        // 對於其他非成功狀態，獲取詳細資訊並立即拋出錯誤。
+                        let errorDetails = `API 請求失敗，狀態碼：${response.status}。`;
+                        try {
+                            const errorData = await response.json();
+                            errorDetails += ` 訊息：${errorData.error?.message || JSON.stringify(errorData)}`;
+                        } catch (e) {
+                            errorDetails += ` 無法解析來自 API 的錯誤回應。`;
+                        }
+                        errorDetails += ' 請檢查您的 API 金鑰、Google Cloud Project 設定及帳單狀態。';
+                        throw new Error(errorDetails);
+                    }
+                } catch (networkError) {
+                    // 處理網路錯誤 (例如，無網路連線)
+                    console.error('網路錯誤:', networkError);
+                    if (i < maxRetries - 1) {
+                        console.log(`網路錯誤。 ${delay / 1000} 秒後重試...`);
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        delay *= 2;
+                    } else {
+                        throw new Error('網路連線失敗，請檢查您的網路設定。');
+                    }
                 }
             }
-            throw new Error(`API 請求失敗，已達重試上限。`);
+            throw new Error(`API 請求失敗，已達重試上限 (請求過於頻繁)。請稍候幾分鐘再試。`);
         }
 
+
         async function generateSpeech() {
-            if (!API_KEY) {
-                showError('API 金鑰未設定，請在程式碼中填入金鑰。');
+            if (!API_KEY || API_KEY === "AIzaSyCQZOnA26Vm2JVU-ZUpWESEa1dGaun4ajM") {
+                showError('API 金鑰無效或未設定，請在程式碼中填入您自己的有效金鑰。');
                 return;
             }
             const text = textInput.value.trim();
@@ -371,4 +392,3 @@
     </script>
 </body>
 </html>
-
